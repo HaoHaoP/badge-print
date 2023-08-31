@@ -5,10 +5,11 @@ import {ElMessage} from 'element-plus'
 
 interface RuleForm {
   paper: string
-  row: string
-  col: string
-  diam: string
-  padding: string
+  row: number
+  col: number
+  diam: number
+  padding: number
+  color: string
 }
 
 interface PaperSize {
@@ -16,18 +17,19 @@ interface PaperSize {
   height: number
 }
 
-const paperSize: Map<String, PaperSize> = new Map([
+const paperSize: Map<string, PaperSize> = new Map([
   ['A4', {width: 21.0, height: 29.7}],
   ['A5', {width: 14.8, height: 21.0}]
 ])
 
 const ruleFormRef = ref<FormInstance>()
 const ruleForm = reactive<RuleForm>({
-  diam: '6.6',
-  padding: '0.2',
+  diam: 6.6,
+  padding: 0.2,
   paper: 'A4',
-  row: '4',
-  col: '2'
+  row: 4,
+  col: 2,
+  color: '#DDDDDD'
 })
 
 const rules = reactive<FormRules<RuleForm>>({
@@ -51,8 +53,10 @@ const rules = reactive<FormRules<RuleForm>>({
 const images = ref<Array<Array<string>>>([])
 const previewBox = ref<HTMLElement>()
 const preview = ref<HTMLElement>()
+const badgeBg = ref<HTMLElement[]>([])
+const badge = ref<HTMLElement[]>([])
 
-const submitForm = ref<RuleForm>(ruleForm)
+const submitForm = ref<RuleForm>({...ruleForm})
 
 watch(submitForm, () => {
   calcPaper()
@@ -83,11 +87,13 @@ const onSubmit = () => {
       }
       images.value = arr
       submitForm.value = {...ruleForm}
+      console.log(submitForm.value)
+      calcPaper()
     }
   })
 }
 const calcPaper = () => {
-  const {paper, row, col, diam, padding} = submitForm.value
+  const {paper, row, col, diam, padding, color} = submitForm.value
   const {width, height} = paperSize.get(paper) || {width: 0, height: 0}
   const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
   const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
@@ -111,16 +117,12 @@ const calcPaper = () => {
     rowArr.push(colArr)
   }
   images.value = rowArr
-  console.log(rowArr)
-  const badgeBg = document.getElementsByClassName('badge-bg');
-  const badgeBgArr: HTMLElement[] = Array.from(badgeBg) as HTMLElement[];
-  const badge = document.getElementsByClassName('badge');
-  const badgeArr: HTMLElement[] = Array.from(badge) as HTMLElement[];
-  badgeBgArr.forEach(item => {
+  badgeBg.value.forEach(item => {
     item.style.width = `${scala * (parseFloat(diam) + parseFloat(padding) * 2)}px`
     item.style.height = `${scala * (parseFloat(diam) + parseFloat(padding) * 2)}px`
+    item.style.background = color
   })
-  badgeArr.forEach(item => {
+  badge.value.forEach(item => {
     item.style.width = `${scala * parseFloat(diam)}px`
     item.style.height = `${scala * parseFloat(diam)}px`
   })
@@ -139,8 +141,8 @@ onUnmounted(() => {
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
         <div class="row" v-for="(_, i) of images" :key="i">
-          <div class="badge-bg" v-for="(image, j) in images[i]" :key="j">
-            <div class="badge">
+          <div ref="badgeBg" class="badge-bg" v-for="(image, j) in images[i]" :key="j">
+            <div ref="badge" class="badge">
               <img :src="image" alt=""/>
             </div>
           </div>
@@ -168,6 +170,9 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="边距(cm)" prop="padding">
           <el-input-number v-model="ruleForm.padding" :precision="2" controls-position="right" :min="0"/>
+        </el-form-item>
+        <el-form-item label="边框颜色" prop="color">
+          <el-color-picker v-model="ruleForm.color"/>
         </el-form-item>
       </el-form>
       <el-button type="primary" @click="onSubmit">生成</el-button>
