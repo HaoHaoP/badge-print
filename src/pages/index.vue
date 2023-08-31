@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, reactive, ref, watch} from 'vue'
-import type {ElMessage, FormInstance, FormRules} from 'element-plus'
+import type {FormInstance, FormRules} from 'element-plus'
+import {ElMessage} from 'element-plus'
 
 interface RuleForm {
   paper: string
@@ -63,7 +64,6 @@ const onSubmit = () => {
       const {paper, row, col, diam, padding} = ruleForm
       const {width, height} = paperSize.get(paper) || {width: 0, height: 0}
       const actWidth = parseInt(col) * (parseFloat(diam) + parseFloat(padding) * 2)
-      console.log(actWidth / col)
       if (actWidth > width) {
         ElMessage.warning('列数过多，无法排版')
         return
@@ -97,7 +97,6 @@ const calcPaper = () => {
   } else {
     scala = previewBoxWidth / width
   }
-  console.log(scala)
   if (preview.value) {
     preview.value.style.height = `${scala * height}px`
     preview.value.style.width = `${scala * width}px`
@@ -139,7 +138,7 @@ onUnmounted(() => {
   <div class="index">
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
-        <div class="row" v-for="(row, i) in images" :key="i">
+        <div class="row" v-for="(_, i) of images" :key="i">
           <div class="badge-bg" v-for="(image, j) in images[i]" :key="j">
             <div class="badge">
               <img :src="image" alt=""/>
