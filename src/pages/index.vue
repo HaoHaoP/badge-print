@@ -4,7 +4,7 @@ import type {FormInstance, FormRules} from 'element-plus'
 import {CircleStencil, Cropper, CropperResult} from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import {Crop, Edit, Plus} from '@element-plus/icons-vue'
-import * as printJS from 'print-js'
+import printJS from 'print-js'
 import html2canvas from 'html2canvas';
 
 interface RuleForm {
