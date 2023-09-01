@@ -67,20 +67,20 @@ const onSubmit = () => {
     if (valid) {
       const {paper, row, col, diam, padding} = ruleForm
       const {width, height} = paperSize.get(paper) || {width: 0, height: 0}
-      const actWidth = parseInt(col) * (parseFloat(diam) + parseFloat(padding) * 2)
+      const actWidth = col * (diam + padding * 2)
       if (actWidth > width) {
         ElMessage.warning('列数过多，无法排版')
         return
       }
-      const actHeight = parseInt(row) * (parseFloat(diam) + parseFloat(padding) * 2)
+      const actHeight = row * (diam + padding * 2)
       if (actHeight > height) {
         ElMessage.warning('行数过多，无法排版')
         return
       }
       const arr = []
-      for (let i = 0; i < parseInt(col); i++) {
+      for (let i = 0; i < col; i++) {
         const colArr = []
-        for (let j = 0; j < parseInt(row); j++) {
+        for (let j = 0; j < row; j++) {
           colArr.push('')
         }
         arr.push(colArr)
@@ -109,22 +109,22 @@ const calcPaper = () => {
   }
 
   const rowArr = []
-  for (let i = 0; i < parseInt(row); i++) {
+  for (let i = 0; i < row; i++) {
     const colArr = []
-    for (let j = 0; j < parseInt(col); j++) {
+    for (let j = 0; j < col; j++) {
       colArr.push('')
     }
     rowArr.push(colArr)
   }
   images.value = rowArr
   badgeBg.value.forEach(item => {
-    item.style.width = `${scala * (parseFloat(diam) + parseFloat(padding) * 2)}px`
-    item.style.height = `${scala * (parseFloat(diam) + parseFloat(padding) * 2)}px`
+    item.style.width = `${scala * (diam + padding * 2)}px`
+    item.style.height = `${scala * (diam + padding * 2)}px`
     item.style.background = color
   })
   badge.value.forEach(item => {
-    item.style.width = `${scala * parseFloat(diam)}px`
-    item.style.height = `${scala * parseFloat(diam)}px`
+    item.style.width = `${scala * diam}px`
+    item.style.height = `${scala * diam}px`
   })
 }
 onMounted(() => {
