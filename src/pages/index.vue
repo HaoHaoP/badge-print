@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import {onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
-import {ElMessage} from 'element-plus'
 
 interface RuleForm {
-  paper: string
   row: number
   col: number
   diam: number
   padding: number
-  color: string
+  color: string,
+  width: number
+  height: number
 }
 
 interface PaperSize {
@@ -19,14 +19,23 @@ interface PaperSize {
 
 const paperSize: Map<string, PaperSize> = new Map([
   ['A4', {width: 21.0, height: 29.7}],
-  ['A5', {width: 14.8, height: 21.0}]
+  ['A5', {width: 14.8, height: 21.0}],
+  ['自定义', {width: 21.0, height: 29.7}],
 ])
+
+const paper = ref<string>('A4')
+
+watch(paper, (val) => {
+  ruleForm.width = paperSize.get(val)?.width || 0
+  ruleForm.height = paperSize.get(val)?.height || 0
+})
 
 const ruleFormRef = ref<FormInstance>()
 const ruleForm = reactive<RuleForm>({
   diam: 6.6,
   padding: 0.2,
-  paper: 'A4',
+  width: 21.0,
+  height: 29.7,
   row: 4,
   col: 2,
   color: '#DDDDDD'
@@ -39,15 +48,21 @@ const rules = reactive<FormRules<RuleForm>>({
   padding: [
     {required: true, message: '请输入边距', trigger: 'blur'}
   ],
-  paper: [
-    {required: true, message: '请选择纸张大小', trigger: 'blur'}
-  ],
   row: [
     {required: true, message: '请输入行数', trigger: 'blur'}
   ],
   col: [
     {required: true, message: '请输入列数', trigger: 'blur'}
-  ]
+  ],
+  color: [
+    {required: true, message: '请选择边框颜色', trigger: 'blur'}
+  ],
+  width: [
+    {required: true, message: '请输入纸张宽度', trigger: 'blur'}
+  ],
+  height: [
+    {required: true, message: '请输入纸张高度', trigger: 'blur'}
+  ],
 })
 
 const images = ref<Array<Array<string>>>([])
@@ -58,15 +73,10 @@ const badge = ref<HTMLElement[]>([])
 
 const submitForm = ref<RuleForm>({...ruleForm})
 
-watch(submitForm, () => {
-  calcPaper()
-}, {deep: true})
-
 const onSubmit = () => {
   ruleFormRef.value?.validate((valid) => {
     if (valid) {
-      const {paper, row, col, diam, padding} = ruleForm
-      const {width, height} = paperSize.get(paper) || {width: 0, height: 0}
+      const {row, col, diam, padding, width, height} = ruleForm
       const actWidth = col * (diam + padding * 2)
       if (actWidth > width) {
         ElMessage.warning('列数过多，无法排版')
@@ -87,14 +97,15 @@ const onSubmit = () => {
       }
       images.value = arr
       submitForm.value = {...ruleForm}
-      console.log(submitForm.value)
-      calcPaper()
+      nextTick(() => {
+        calcPaper()
+      })
     }
   })
 }
 const calcPaper = () => {
-  const {paper, row, col, diam, padding, color} = submitForm.value
-  const {width, height} = paperSize.get(paper) || {width: 0, height: 0}
+  console.log('calcPaper', submitForm.value)
+  const {row, col, diam, padding, color, width, height} = submitForm.value
   const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
   const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
   let scala = 0
@@ -153,11 +164,16 @@ onUnmounted(() => {
       <h1 class="title">吧唧打印图排版工具</h1>
       <el-form class="form" ref="ruleFormRef" :model="ruleForm" :rules="rules" label-position="left"
                label-width="120px">
-        <el-form-item label="纸张大小" prop="paper">
-          <el-radio-group v-model="ruleForm.paper">
-            <el-radio-button label="A4">A4</el-radio-button>
-            <el-radio-button label="A5">A5</el-radio-button>
+        <el-form-item label="纸张大小">
+          <el-radio-group v-model="paper">
+            <el-radio-button v-for="item in paperSize.entries()" :key="item[0]" :label="item[0]"></el-radio-button>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="paper === '自定义'" label="纸张宽度(cm)" prop="width">
+          <el-input-number v-model="ruleForm.width" :precision="2" controls-position="right" :min="0.01"/>
+        </el-form-item>
+        <el-form-item v-if="paper === '自定义'" label="纸张高度(cm)" prop="height">
+          <el-input-number v-model="ruleForm.height" :precision="2" controls-position="right" :min="0.01"/>
         </el-form-item>
         <el-form-item label="行数" prop="row">
           <el-input-number v-model="ruleForm.row" controls-position="right" :min="1"/>
