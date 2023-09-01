@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import {nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
+import {CircleStencil, Cropper, CropperResult} from 'vue-advanced-cropper';
+import 'vue-advanced-cropper/dist/style.css';
+import {Crop, Edit, Plus} from '@element-plus/icons-vue'
+import * as printJS from 'print-js'
+import html2canvas from 'html2canvas';
 
 interface RuleForm {
   row: number
@@ -74,38 +79,48 @@ const badge = ref<HTMLElement[]>([])
 const submitForm = ref<RuleForm>({...ruleForm})
 
 const onSubmit = () => {
-  ruleFormRef.value?.validate((valid) => {
-    if (valid) {
-      const {row, col, diam, padding, width, height} = ruleForm
-      const actWidth = col * (diam + padding * 2)
-      if (actWidth > width) {
-        ElMessage.warning('列数过多，无法排版')
-        return
+  ElMessageBox.confirm(
+      '已选图片将会被清空，是否继续？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
       }
-      const actHeight = row * (diam + padding * 2)
-      if (actHeight > height) {
-        ElMessage.warning('行数过多，无法排版')
-        return
-      }
-      const arr = []
-      for (let i = 0; i < col; i++) {
-        const colArr = []
-        for (let j = 0; j < row; j++) {
-          colArr.push('')
+  ).then(() => {
+    ruleFormRef.value?.validate((valid) => {
+      if (valid) {
+        const {row, col, diam, padding, width, height} = ruleForm
+        const actWidth = col * (diam + padding * 2)
+        if (actWidth > width) {
+          ElMessage.warning('列数过多，无法排版')
+          return
         }
-        arr.push(colArr)
-      }
-      images.value = arr
-      submitForm.value = {...ruleForm}
-      nextTick(() => {
+        const actHeight = row * (diam + padding * 2)
+        if (actHeight > height) {
+          ElMessage.warning('行数过多，无法排版')
+          return
+        }
+
+        const arr = []
+        for (let i = 0; i < row; i++) {
+          const rowArr = []
+          for (let j = 0; j < col; j++) {
+            rowArr.push('')
+          }
+          arr.push(rowArr)
+        }
+        images.value = arr
+
+        submitForm.value = {...ruleForm}
         calcPaper()
-      })
-    }
+      }
+    })
   })
 }
 const calcPaper = () => {
-  console.log('calcPaper', submitForm.value)
-  const {row, col, diam, padding, color, width, height} = submitForm.value
+  const {diam, padding, color, width, height} = submitForm.value
+
   const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
   const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
   let scala = 0
@@ -114,28 +129,21 @@ const calcPaper = () => {
   } else {
     scala = previewBoxWidth / width
   }
-  if (preview.value) {
-    preview.value.style.height = `${scala * height}px`
-    preview.value.style.width = `${scala * width}px`
-  }
-
-  const rowArr = []
-  for (let i = 0; i < row; i++) {
-    const colArr = []
-    for (let j = 0; j < col; j++) {
-      colArr.push('')
+  nextTick(() => {
+    if (preview.value) {
+      preview.value.style.height = `${scala * height}px`
+      preview.value.style.width = `${scala * width}px`
     }
-    rowArr.push(colArr)
-  }
-  images.value = rowArr
-  badgeBg.value.forEach(item => {
-    item.style.width = `${scala * (diam + padding * 2)}px`
-    item.style.height = `${scala * (diam + padding * 2)}px`
-    item.style.background = color
-  })
-  badge.value.forEach(item => {
-    item.style.width = `${scala * diam}px`
-    item.style.height = `${scala * diam}px`
+
+    badgeBg.value.forEach(item => {
+      item.style.width = `${scala * (diam + padding * 2)}px`
+      item.style.height = `${scala * (diam + padding * 2)}px`
+      item.style.background = color
+    })
+    badge.value.forEach(item => {
+      item.style.width = `${scala * diam}px`
+      item.style.height = `${scala * diam}px`
+    })
   })
 }
 onMounted(() => {
@@ -145,16 +153,69 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', calcPaper)
 })
+
+const fileInput = ref<HTMLInputElement>()
+const dialogVisible = ref<boolean>(false)
+const rowIndex = ref(0)
+const colIndex = ref(0)
+const editable = ref('')
+const addImage = (i: number, j: number) => {
+  editable.value = ''
+  rowIndex.value = i
+  colIndex.value = j
+  const inputDom = fileInput.value
+  if (inputDom) {
+    inputDom.value = ''
+    inputDom.click()
+  }
+}
+const fileChange = (e) => {
+  const file = e.target.files[0]
+  const reader = new FileReader()
+  reader.readAsDataURL(file)
+  reader.onload = () => {
+    images.value[rowIndex.value][colIndex.value] = reader.result as string
+    dialogVisible.value = true
+  }
+}
+
+const editImage = (i: number, j: number) => {
+  editable.value = ''
+  rowIndex.value = i
+  colIndex.value = j
+  dialogVisible.value = true
+}
+const cropperRef = ref<Cropper>()
+const confirmCrop = () => {
+  const {canvas} = cropperRef.value.getResult() as CropperResult
+  images.value[rowIndex.value][colIndex.value] = canvas.toDataURL()
+  dialogVisible.value = false
+}
+
+const print = () => {
+  html2canvas(preview.value).then(canvas => {
+    printJS({
+      printable: canvas.toDataURL(),
+      type: 'image'
+    })
+  })
+}
 </script>
 
 <template>
   <div class="index">
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
-        <div class="row" v-for="(_, i) of images" :key="i">
-          <div ref="badgeBg" class="badge-bg" v-for="(image, j) in images[i]" :key="j">
-            <div ref="badge" class="badge">
-              <img :src="image" alt=""/>
+        <div class="row" v-for="(row, i) of images" :key="i">
+          <div ref="badgeBg" class="badge-bg" v-for="(image, j) in row" :key="j">
+            <div ref="badge" class="badge" @mouseenter="editable = `${i},${j}`" @mouseleave="editable = ''">
+              <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
+              <div v-if="!image || editable && +editable.split(',')[0] === i && +editable.split(',')[1] === j"
+                   class="btn-box">
+                <el-button v-if="image" :icon="Edit" circle @click="addImage(i, j)"/>
+                <el-button v-else :icon="Plus" circle @click="addImage(i, j)"/>
+                <el-button v-if="image" :icon="Crop" circle @click="editImage(i, j)"/>
+              </div>
             </div>
           </div>
         </div>
@@ -191,8 +252,23 @@ onUnmounted(() => {
           <el-color-picker v-model="ruleForm.color"/>
         </el-form-item>
       </el-form>
-      <el-button type="primary" @click="onSubmit">生成</el-button>
+      <div class="btn-box">
+        <el-button class="button" type="primary" @click="onSubmit">生成</el-button>
+        <el-button class="button" type="primary" @click="print">打印</el-button>
+      </div>
+      <p>Tips：打印需设置无边距和默认缩放</p>
     </div>
+    <el-dialog v-model="dialogVisible" title="裁剪">
+      <cropper ref="cropperRef" :src="images[rowIndex][colIndex]"
+               :stencil-component="CircleStencil"></cropper>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmCrop">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+    <input ref="fileInput" type="file" class="file-input" accept="image/*" @change="fileChange"/>
   </div>
 </template>
 
@@ -201,6 +277,12 @@ onUnmounted(() => {
   display: flex;
   width: 100%;
   height: 100%;
+
+  .file-input {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
 
   .preview-box {
     flex: 3;
@@ -234,8 +316,27 @@ onUnmounted(() => {
           border-radius: 50%;
 
           .badge {
-            background: #66CCFF;
             border-radius: 50%;
+            position: relative;
+
+            .image {
+              width: 100%;
+              height: 100%;
+              border-radius: 50%;
+            }
+
+            .btn-box {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 50%;
+              background: rgba(0, 0, 0, 0.1);
+            }
           }
         }
       }
@@ -259,8 +360,25 @@ onUnmounted(() => {
     }
 
     .form {
-      margin: 40px 0 60px 0;
+      margin-top: 40px;
     }
+
+    .btn-box {
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      width:100%;
+      margin-top: 40px;
+      margin-bottom: 20px;
+
+      .button {
+        width: 100px;
+      }
+    }
+  }
+
+  .dialog-footer button:first-child {
+    margin-right: 10px;
   }
 }
 </style>
