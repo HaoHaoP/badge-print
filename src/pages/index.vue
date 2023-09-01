@@ -169,7 +169,7 @@ const addImage = (i: number, j: number) => {
     inputDom.click()
   }
 }
-const fileChange = (e) => {
+const fileChange = (e: any) => {
   const file = e.target.files[0]
   const reader = new FileReader()
   reader.readAsDataURL(file)
@@ -185,14 +185,20 @@ const editImage = (i: number, j: number) => {
   colIndex.value = j
   dialogVisible.value = true
 }
-const cropperRef = ref<Cropper>()
+const cropperRef = ref()
 const confirmCrop = () => {
+  if (!cropperRef.value) {
+    return
+  }
   const {canvas} = cropperRef.value.getResult() as CropperResult
-  images.value[rowIndex.value][colIndex.value] = canvas.toDataURL()
+  images.value[rowIndex.value][colIndex.value] = canvas?.toDataURL() || ''
   dialogVisible.value = false
 }
 
 const print = () => {
+  if (!preview.value) {
+    return
+  }
   html2canvas(preview.value).then(canvas => {
     printJS({
       printable: canvas.toDataURL(),
