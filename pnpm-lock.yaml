@@ -10,9 +10,6 @@ dependencies:
   html2canvas:
     specifier: 1.4.1
     version: registry.npmmirror.com/html2canvas@1.4.1
-  lodash:
-    specifier: ^4.17.21
-    version: registry.npmmirror.com/lodash@4.17.21
   unplugin-icons:
     specifier: 0.16.6
     version: registry.npmmirror.com/unplugin-icons@0.16.6
