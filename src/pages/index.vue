@@ -4,7 +4,6 @@ import type {FormInstance, FormRules} from 'element-plus'
 import {CircleStencil, Cropper, CropperResult} from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import {Crop, Edit, Plus} from '@element-plus/icons-vue'
-import printJS from 'print-js'
 import html2canvas from 'html2canvas';
 
 interface RuleForm {
@@ -21,6 +20,8 @@ interface PaperSize {
   width: number
   height: number
 }
+
+const dpc = 300
 
 const paperSize: Map<string, PaperSize> = new Map([
   ['A4', {width: 21.0, height: 29.7}],
@@ -76,9 +77,15 @@ const preview = ref<HTMLElement>()
 const badgeBg = ref<HTMLElement[]>([])
 const badge = ref<HTMLElement[]>([])
 
+const btnScale = ref(1)
+
 const submitForm = ref<RuleForm>({...ruleForm})
 
 const onSubmit = () => {
+  if (images.value.every(i => i.every(j => !j))) {
+    validateForm()
+    return
+  }
   ElMessageBox.confirm(
       '已选图片将会被清空，是否继续？',
       '提示',
@@ -88,34 +95,37 @@ const onSubmit = () => {
         type: 'warning',
       }
   ).then(() => {
-    ruleFormRef.value?.validate((valid) => {
-      if (valid) {
-        const {row, col, diam, padding, width, height} = ruleForm
-        const actWidth = col * (diam + padding * 2)
-        if (actWidth > width) {
-          ElMessage.warning('列数过多，无法排版')
-          return
-        }
-        const actHeight = row * (diam + padding * 2)
-        if (actHeight > height) {
-          ElMessage.warning('行数过多，无法排版')
-          return
-        }
-
-        const arr = []
-        for (let i = 0; i < row; i++) {
-          const rowArr = []
-          for (let j = 0; j < col; j++) {
-            rowArr.push('')
-          }
-          arr.push(rowArr)
-        }
-        images.value = arr
-
-        submitForm.value = {...ruleForm}
-        calcPaper()
+    validateForm()
+  })
+}
+const validateForm = () => {
+  ruleFormRef.value?.validate((valid) => {
+    if (valid) {
+      const {row, col, diam, padding, width, height} = ruleForm
+      const actWidth = col * (diam + padding * 2)
+      if (actWidth > width) {
+        ElMessage.warning('列数过多，无法排版')
+        return
       }
-    })
+      const actHeight = row * (diam + padding * 2)
+      if (actHeight > height) {
+        ElMessage.warning('行数过多，无法排版')
+        return
+      }
+
+      const arr = []
+      for (let i = 0; i < row; i++) {
+        const rowArr = []
+        for (let j = 0; j < col; j++) {
+          rowArr.push('')
+        }
+        arr.push(rowArr)
+      }
+      images.value = arr
+
+      submitForm.value = {...ruleForm}
+      calcPaper()
+    }
   })
 }
 const calcPaper = () => {
@@ -123,29 +133,40 @@ const calcPaper = () => {
 
   const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
   const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
-  let scala = 0
+
+  const previewHeight = dpc * height
+  const previewWidth = dpc * width
+
+  let scale = 1
   if (previewBoxWidth / previewBoxHeight > width / height) {
-    scala = previewBoxHeight / height
+    scale = previewBoxHeight / previewHeight
   } else {
-    scala = previewBoxWidth / width
+    scale = previewBoxWidth / previewWidth
   }
   nextTick(() => {
     if (preview.value) {
-      preview.value.style.height = `${scala * height}px`
-      preview.value.style.width = `${scala * width}px`
+      preview.value.style.height = `${previewHeight}px`
+      preview.value.style.width = `${previewWidth}px`
+      preview.value.style.minHeight = `${previewHeight}px`
+      preview.value.style.minWidth = `${previewWidth}px`
+      preview.value.style.maxHeight = `${previewHeight}px`
+      preview.value.style.maxWidth = `${previewWidth}px`
+      preview.value.style.transform = `scale(${scale})`
     }
-
     badgeBg.value.forEach(item => {
-      item.style.width = `${scala * (diam + padding * 2)}px`
-      item.style.height = `${scala * (diam + padding * 2)}px`
+      const bgDiam = (diam + padding * 2) * dpc
+      item.style.width = `${bgDiam}px`
+      item.style.height = `${bgDiam}px`
       item.style.background = color
     })
     badge.value.forEach(item => {
-      item.style.width = `${scala * diam}px`
-      item.style.height = `${scala * diam}px`
+      item.style.width = `${dpc * diam}px`
+      item.style.height = `${dpc * diam}px`
     })
+    btnScale.value = 1 / scale
   })
 }
+
 onMounted(() => {
   calcPaper()
   window.addEventListener('resize', calcPaper)
@@ -195,15 +216,20 @@ const confirmCrop = () => {
   dialogVisible.value = false
 }
 
-const print = () => {
+const output = () => {
   if (!preview.value) {
     return
   }
-  html2canvas(preview.value).then(canvas => {
-    printJS({
-      printable: canvas.toDataURL(),
-      type: 'image'
-    })
+  html2canvas(preview.value, {
+    onclone: (_, el: HTMLElement) => {
+      el.style.transform = ''
+    }
+  }).then((canvas: HTMLCanvasElement) => {
+    const a = document.createElement('a')
+    a.href = canvas.toDataURL()
+    a.download = '吧唧图.png'
+    a.click()
+    a.remove()
   })
 }
 </script>
@@ -218,9 +244,11 @@ const print = () => {
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
               <div v-if="!image || editable && +editable.split(',')[0] === i && +editable.split(',')[1] === j"
                    class="btn-box">
-                <el-button v-if="image" :icon="Edit" circle @click="addImage(i, j)"/>
-                <el-button v-else :icon="Plus" circle @click="addImage(i, j)"/>
-                <el-button v-if="image" :icon="Crop" circle @click="editImage(i, j)"/>
+                <el-button :style="`transform: scale(${btnScale})`" v-if="image" :icon="Edit" circle
+                           @click="addImage(i, j)"/>
+                <el-button :style="`transform: scale(${btnScale})`" v-else :icon="Plus" circle @click="addImage(i, j)"/>
+                <el-button :style="`transform: scale(${btnScale})`" v-if="image" :icon="Crop" circle
+                           @click="editImage(i, j)"/>
               </div>
             </div>
           </div>
@@ -260,7 +288,7 @@ const print = () => {
       </el-form>
       <div class="btn-box">
         <el-button class="button" type="primary" @click="onSubmit">生成</el-button>
-        <el-button class="button" type="primary" @click="print">打印</el-button>
+        <el-button class="button" type="primary" @click="output">导出</el-button>
       </div>
       <p>Tips：打印需设置无边距和默认缩放</p>
     </div>
