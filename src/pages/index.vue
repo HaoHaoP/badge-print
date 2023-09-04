@@ -256,11 +256,18 @@ const output = () => {
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
               <div v-if="!image || editable && +editable.split(',')[0] === i && +editable.split(',')[1] === j"
                    class="btn-box">
-                <el-button :style="`transform: scale(${btnScale})`" v-if="image" :icon="Edit" circle
-                           @click="addImage(i, j)"/>
-                <el-button :style="`transform: scale(${btnScale})`" v-else :icon="Plus" circle @click="addImage(i, j)"/>
-                <el-button :style="`transform: scale(${btnScale})`" v-if="image" :icon="Crop" circle
-                           @click="editImage(i, j)"/>
+                <div v-if="image" class="inner-content">
+                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
+                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Edit" circle @click="addImage(i, j)"/>
+                </div>
+                <div v-else class="inner-content">
+                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
+                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Plus" circle @click="addImage(i, j)"/>
+                </div>
+                <div v-if="image" class="inner-content">
+                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
+                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Crop" circle @click="editImage(i, j)"/>
+                </div>
               </div>
             </div>
           </div>
@@ -382,6 +389,20 @@ const output = () => {
               justify-content: center;
               border-radius: 50%;
               background: rgba(0, 0, 0, 0.1);
+              .inner-content {
+                position: relative;
+                &:last-child {
+                  margin-right: 0!important;
+                }
+                .fake {
+                  visibility: hidden;
+                }
+                .real {
+                  position: absolute;
+                  top: 50%;
+                  left: 50%;
+                }
+              }
             }
           }
         }
@@ -419,12 +440,11 @@ const output = () => {
 
       .button {
         width: 100px;
+        &:first-child {
+          margin-right: 10px;
+        }
       }
     }
-  }
-
-  .dialog-footer button:first-child {
-    margin-right: 10px;
   }
 }
 </style>
