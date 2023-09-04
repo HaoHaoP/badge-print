@@ -82,6 +82,7 @@ const rules = reactive<FormRules<RuleForm>>({
   ],
 })
 
+const tempImages = ref<Array<Array<string>>>([])
 const images = ref<Array<Array<string>>>([])
 const previewBox = ref<HTMLElement>()
 const preview = ref<HTMLElement>()
@@ -136,6 +137,7 @@ const validateForm = () => {
         arr.push(rowArr)
       }
       images.value = arr
+      tempImages.value = JSON.parse(JSON.stringify(arr))
 
       submitForm.value = {...ruleForm}
       calcPaper()
@@ -207,6 +209,7 @@ const fileChange = (e: any) => {
   reader.readAsDataURL(file)
   reader.onload = () => {
     images.value[rowIndex.value][colIndex.value] = reader.result as string
+    tempImages.value[rowIndex.value][colIndex.value] = reader.result as string
     dialogVisible.value = true
   }
 }
@@ -264,7 +267,7 @@ const output = () => {
                   <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
                   <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Plus" circle @click="addImage(i, j)"/>
                 </div>
-                <div v-if="image" class="inner-content">
+                <div v-if="tempImages[i][j]" class="inner-content">
                   <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
                   <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Crop" circle @click="editImage(i, j)"/>
                 </div>
@@ -312,7 +315,7 @@ const output = () => {
       <p>Tips：纸张宽高为600dpi换算的像素</p>
     </div>
     <el-dialog v-model="dialogVisible" title="裁剪" :close-on-click-modal="false">
-      <cropper ref="cropperRef" :src="images[rowIndex][colIndex]"
+      <cropper ref="cropperRef" :src="tempImages[rowIndex][colIndex]"
                :stencil-component="CircleStencil"></cropper>
       <template #footer>
         <span class="dialog-footer">
