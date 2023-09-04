@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import {nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
 import {CircleStencil, Cropper, CropperResult} from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
