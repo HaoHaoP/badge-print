@@ -20,6 +20,13 @@ interface PaperSize {
   height: number
 }
 
+interface ExportForm {
+  fileName: string
+  fileType: string
+  quality: number
+  dpi: number
+}
+
 const paperSize: Map<string, PaperSize> = new Map([
   ['A3', {
     width: 7016,
@@ -55,6 +62,13 @@ const ruleForm = reactive<RuleForm>({
   row: 4,
   col: 2,
   color: '#DDDDDD'
+})
+
+const exportForm = reactive<ExportForm>({
+  fileName: '吧唧图',
+  fileType: 'png',
+  quality: 1,
+  dpi: 600
 })
 
 const rules = reactive<FormRules<RuleForm>>({
@@ -233,18 +247,23 @@ const output = () => {
     return
   }
   html2canvas(preview.value, {
+    scale: exportForm.dpi / 600,
     onclone: (_, el: HTMLElement) => {
       el.style.transform = ''
     }
   }).then((canvas: HTMLCanvasElement) => {
     const a = document.createElement('a')
-    a.href = canvas.toDataURL()
-    a.download = '吧唧图.png'
+    a.href = canvas.toDataURL(`image/${exportForm.fileType}`, exportForm.quality)
+    a.download = `${exportForm.fileName || '吧唧图'}.${exportForm.fileType}`
     a.click()
     a.remove()
   }).catch(err => {
     console.warn(err)
   })
+}
+
+const goGitHub = () => {
+  window.open('https://github.com/HaoHaoP/badge-print')
 }
 </script>
 
@@ -278,40 +297,70 @@ const output = () => {
     </div>
     <div class="content">
       <h1 class="title">吧唧打印图排版工具</h1>
-      <el-form class="form" ref="ruleFormRef" :model="ruleForm" :rules="rules" label-position="left"
-               label-width="120px">
-        <el-form-item label="纸张大小">
-          <el-radio-group v-model="paper">
-            <el-radio-button v-for="item in paperSize.entries()" :key="item[0]" :label="item[0]"></el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="paper === '自定义'" label="纸张宽度(像素)" prop="width">
-          <el-input-number v-model="ruleForm.width" :precision="2" controls-position="right" :min="0.01"/>
-        </el-form-item>
-        <el-form-item v-if="paper === '自定义'" label="纸张高度(像素)" prop="height">
-          <el-input-number v-model="ruleForm.height" :precision="2" controls-position="right" :min="0.01"/>
-        </el-form-item>
-        <el-form-item label="行数" prop="row">
-          <el-input-number v-model="ruleForm.row" controls-position="right" :min="1"/>
-        </el-form-item>
-        <el-form-item label="列数" prop="col">
-          <el-input-number v-model="ruleForm.col" controls-position="right" :min="1"/>
-        </el-form-item>
-        <el-form-item label="直径(cm)" prop="diam">
-          <el-input-number v-model="ruleForm.diam" :precision="2" controls-position="right" :min="0"/>
-        </el-form-item>
-        <el-form-item label="边距(cm)" prop="padding">
-          <el-input-number v-model="ruleForm.padding" :precision="2" controls-position="right" :min="0"/>
-        </el-form-item>
-        <el-form-item label="边框颜色" prop="color">
-          <el-color-picker v-model="ruleForm.color"/>
-        </el-form-item>
-      </el-form>
-      <div class="btn-box">
-        <el-button class="button" type="primary" @click="onSubmit">生成</el-button>
-        <el-button class="button" type="primary" @click="output">导出</el-button>
+      <div class="content-box">
+        <el-form class="form" ref="ruleFormRef" :model="ruleForm" :rules="rules" label-position="left"
+                 label-width="120px">
+          <el-form-item label="纸张大小">
+            <el-radio-group v-model="paper">
+              <el-radio-button v-for="item in paperSize.entries()" :key="item[0]" :label="item[0]"></el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="paper === '自定义'" label="纸张宽度(像素)" prop="width">
+            <el-input-number v-model="ruleForm.width" controls-position="right" :min="0.01"/>
+          </el-form-item>
+          <el-form-item v-if="paper === '自定义'" label="纸张高度(像素)" prop="height">
+            <el-input-number v-model="ruleForm.height" controls-position="right" :min="0.01"/>
+          </el-form-item>
+          <el-form-item label="行数" prop="row">
+            <el-input-number v-model="ruleForm.row" controls-position="right" :min="1"/>
+          </el-form-item>
+          <el-form-item label="列数" prop="col">
+            <el-input-number v-model="ruleForm.col" controls-position="right" :min="1"/>
+          </el-form-item>
+          <el-form-item label="直径(cm)" prop="diam">
+            <el-input-number v-model="ruleForm.diam" :precision="2" controls-position="right" :min="0"/>
+          </el-form-item>
+          <el-form-item label="边距(cm)" prop="padding">
+            <el-input-number v-model="ruleForm.padding" :precision="2" controls-position="right" :min="0"/>
+          </el-form-item>
+          <el-form-item label="边框颜色" prop="color">
+            <el-color-picker v-model="ruleForm.color"/>
+          </el-form-item>
+        </el-form>
+        <el-form class="form" ref="exportFormRef" :model="exportForm" label-position="left"
+                 label-width="120px">
+          <el-form-item label="文件名">
+            <el-input v-model="exportForm.fileName"/>
+          </el-form-item>
+          <el-form-item label="文件类型">
+            <el-select v-model="exportForm.fileType">
+              <el-option label="png" value="png"/>
+              <el-option label="jpeg" value="jpeg"/>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="质量">
+            <el-slider v-model="exportForm.quality" :min="0.1" :max="1" :step="0.1"
+                       :format-tooltip="(value: number) => value * 100 + '%'"/>
+          </el-form-item>
+          <el-form-item label="DPI">
+            <el-select v-model="exportForm.dpi">
+              <el-option label="600" :value="600"/>
+              <el-option label="400" :value="400"/>
+              <el-option label="300" :value="300"/>
+              <el-option label="300" :value="200"/>
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <div class="btn-box">
+          <el-button class="button" type="primary" @click="onSubmit">生成</el-button>
+          <el-button class="button" type="primary" @click="output">导出</el-button>
+        </div>
+        <p>Tips：png格式100%质量600dpi为无压缩</p>
       </div>
-      <p>Tips：纸张宽高为600dpi换算的像素</p>
+      <div class="footer">
+        <p class="copyright">Copyright (c) 2023 皓皓P</p>
+        <img class="github-icon" src="../assets/github-mark.svg" @click="goGitHub" alt="GitHub"/>
+      </div>
     </div>
     <el-dialog v-model="dialogVisible" title="裁剪" :close-on-click-modal="false">
       <cropper ref="cropperRef" :src="tempImages[rowIndex][colIndex]"
@@ -420,6 +469,10 @@ const output = () => {
     flex-direction: column;
     align-items: center;
 
+    .content-box {
+      flex: 1;
+    }
+
     .title {
       font-size: 21px;
       font-weight: bold;
@@ -436,15 +489,35 @@ const output = () => {
       display: flex;
       justify-content: space-evenly;
       align-items: center;
-      width:100%;
+      width: 100%;
       margin-top: 40px;
       margin-bottom: 20px;
 
       .button {
         width: 100px;
+
         &:first-child {
           margin-right: 10px;
         }
+      }
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+
+      .copyright {
+        font-size: 12px;
+        margin-left: 10px;
+      }
+
+      .github-icon {
+        width: 1em;
+        height: 1em;
+        cursor: pointer;
+        margin-left: 10px;
       }
     }
   }
