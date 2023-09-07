@@ -347,7 +347,6 @@ const goGitHub = () => {
               <el-option label="600" :value="600"/>
               <el-option label="400" :value="400"/>
               <el-option label="300" :value="300"/>
-              <el-option label="300" :value="200"/>
             </el-select>
           </el-form-item>
         </el-form>
