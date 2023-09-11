@@ -242,24 +242,46 @@ const confirmCrop = () => {
   images.value[rowIndex.value][colIndex.value] = canvas?.toDataURL() || ''
   dialogVisible.value = false
 }
+const loading = ref(false)
 const output = () => {
-  if (!preview.value) {
+  if (loading.value) {
     return
   }
-  html2canvas(preview.value, {
-    scale: exportForm.dpi / 600,
-    onclone: (_, el: HTMLElement) => {
-      el.style.transform = ''
+  loading.value = true
+  nextTick(async () => {
+    try {
+      if (!preview.value) {
+        loading.value = false
+        return
+      }
+      const canvas = await html2canvas(preview.value, {
+        scale: exportForm.dpi / 600,
+        onclone: (_, el: HTMLElement) => {
+          el.style.transform = ''
+        }
+      })
+      const img = await loadImg(canvas.toDataURL(`image/${exportForm.fileType}`, exportForm.quality))
+      const a = document.createElement('a')
+      a.href = img.src
+      a.download = `${exportForm.fileName || '吧唧图'}.${exportForm.fileType}`
+      a.click()
+      a.remove()
+      img.remove()
+      loading.value = false
+    } catch (e) {
+      loading.value = false
+      console.warn(e)
     }
-  }).then((canvas: HTMLCanvasElement) => {
-    const a = document.createElement('a')
-    a.href = canvas.toDataURL(`image/${exportForm.fileType}`, exportForm.quality)
-    a.download = `${exportForm.fileName || '吧唧图'}.${exportForm.fileType}`
-    a.click()
-    a.remove()
-  }).catch(err => {
-    console.warn(err)
   })
+}
+
+const loadImg = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+  });
 }
 
 const goGitHub = () => {
@@ -272,7 +294,7 @@ const goGitHub = () => {
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
         <div class="row" v-for="(row, i) of images" :key="i">
-          <div ref="badgeBg" class="badge-bg" v-for="(image, j) in row" :key="j">
+          <div ref="badgeBg" class="badge-bg" :class="{hidden: loading && !image}" v-for="(image, j) in row" :key="j">
             <div ref="badge" class="badge" @mouseenter="editable = `${i},${j}`" @mouseleave="editable = ''">
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
               <div v-if="!image || editable && +editable.split(',')[0] === i && +editable.split(',')[1] === j"
@@ -352,9 +374,9 @@ const goGitHub = () => {
         </el-form>
         <div class="btn-box">
           <el-button class="button" type="primary" @click="onSubmit">生成</el-button>
-          <el-button class="button" type="primary" @click="output">导出</el-button>
+          <el-button :loading="loading" class="button" type="primary" @click="output">导出</el-button>
         </div>
-        <p>Tips：png格式100%质量600dpi为无压缩</p>
+        <p>Tips：当导出打印图时，未选图片的圆圈会被隐藏。</p>
       </div>
       <div class="footer">
         <p class="copyright">Copyright (c) 2023 皓皓P</p>
@@ -417,6 +439,10 @@ const goGitHub = () => {
           align-items: center;
           justify-content: center;
           border-radius: 50%;
+
+          &.hidden {
+            opacity: 0;
+          }
 
           .badge {
             border-radius: 50%;
