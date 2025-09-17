@@ -2,8 +2,9 @@
 import type {FormInstance, FormRules} from 'element-plus'
 import {CircleStencil, Cropper, CropperResult} from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
-import {Crop, Edit, Plus} from '@element-plus/icons-vue'
+import {CopyDocument, Crop, Edit, List, Plus} from '@element-plus/icons-vue'
 import html2canvas from 'html2canvas';
+import {computed} from 'vue';
 
 interface RuleForm {
   row: number
@@ -274,6 +275,17 @@ const output = () => {
     }
   })
 }
+const copyItem = ref()
+const copyTemp = ref()
+const copyImage = (i: number, j: number) => {
+  copyItem.value = JSON.parse(JSON.stringify(images.value[i][j]))
+  copyTemp.value = JSON.parse(JSON.stringify(tempImages.value[i][j]))
+}
+
+const pasteImage = (i: number, j: number) => {
+  images.value[i][j] = JSON.parse(JSON.stringify(copyItem.value))
+  tempImages.value[i][j] = JSON.parse(JSON.stringify(copyItem.value))
+}
 
 const loadImg = (src: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -287,6 +299,14 @@ const loadImg = (src: string): Promise<HTMLImageElement> => {
 const goGitHub = () => {
   window.open('https://github.com/HaoHaoP/badge-print')
 }
+
+const fakeStyle = computed(() => {
+  return `width: ${btnScale.value * 32}px; margin-right: ${btnScale.value * 10}px;`
+})
+
+const realStyle = computed(() => {
+  return `transform: translate(-50%, -50%) scale(${btnScale.value})`
+})
 </script>
 
 <template>
@@ -299,17 +319,22 @@ const goGitHub = () => {
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
               <div v-if="!image || editable && +editable.split(',')[0] === i && +editable.split(',')[1] === j"
                    class="btn-box">
-                <div v-if="image" class="inner-content">
-                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
-                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Edit" circle @click="addImage(i, j)"/>
-                </div>
-                <div v-else class="inner-content">
-                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
-                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Plus" circle @click="addImage(i, j)"/>
+                <div class="inner-content">
+                  <div class="fake" :style="fakeStyle"></div>
+                  <el-button class="real" :style="realStyle" :icon="image ? Edit : Plus" circle
+                             @click="addImage(i, j)"/>
                 </div>
                 <div v-if="tempImages[i][j]" class="inner-content">
-                  <div class="fake" :style="`width: ${btnScale * 32}px; margin-right: ${btnScale * 10}px;`"></div>
-                  <el-button class="real" :style="`transform: translate(-50%, -50%) scale(${btnScale})`" :icon="Crop" circle @click="editImage(i, j)"/>
+                  <div class="fake" :style="fakeStyle"></div>
+                  <el-button class="real" :style="realStyle" :icon="Crop" circle @click="editImage(i, j)"/>
+                </div>
+                <div v-if="tempImages[i][j]" class="inner-content">
+                  <div class="fake" :style="fakeStyle"></div>
+                  <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
+                </div>
+                <div v-if="copyItem" class="inner-content">
+                  <div class="fake" :style="fakeStyle"></div>
+                  <el-button class="real" :style="realStyle" :icon="List" circle @click="pasteImage(i, j)"/>
                 </div>
               </div>
             </div>
@@ -465,14 +490,18 @@ const goGitHub = () => {
               justify-content: center;
               border-radius: 50%;
               background: rgba(0, 0, 0, 0.1);
+
               .inner-content {
                 position: relative;
+
                 &:last-child {
-                  margin-right: 0!important;
+                  margin-right: 0 !important;
                 }
+
                 .fake {
                   visibility: hidden;
                 }
+
                 .real {
                   position: absolute;
                   top: 50%;
