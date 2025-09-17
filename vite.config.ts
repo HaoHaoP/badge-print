@@ -58,18 +58,5 @@ export default defineConfig({
         }),
 
         Inspect(),
-    ],
-    build: {
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    // 将大型库单独分包
-                    'element-plus': ['element-plus'],
-                    'vue-vendor': ['vue', 'vue-router'],
-                    // 按功能分包
-                    'image-processing': ['html2canvas', 'vue-advanced-cropper']
-                }
-            }
-        }
-    }
+    ]
 })
